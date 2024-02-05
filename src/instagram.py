@@ -1,4 +1,5 @@
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.remote.webelement import WebElement
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.keys import Keys
@@ -28,6 +29,15 @@ class Instagram:
 
         self._driver.get("https://google.com/")
 
+    @validate_call
+    def _wait_element(self, by: str, selector: str) -> WebElement:
+        element = self._driver.find_element(by, selector)
+        WebDriverWait(self._driver, 10).until(
+            EC.element_to_be_clickable(element)
+        )
+
+        return element
+
     def _save_cookies(self) -> None:
         current_domain = extract_domain(self._driver.current_url)
         file_path = f".user_data/{current_domain}.json"
@@ -48,23 +58,21 @@ class Instagram:
 
     def _close_notifications_popup(self) -> None:
         try:
-            self._driver.implicitly_wait(5)
-            notifications_element = self._driver.find_element(By.XPATH, "//*[contains(text(), 'Agora não')]")
+            notifications_element = self._wait_element(By.XPATH, "//*[contains(text(), 'Agora não')]")
             notifications_element.click()
             self._save_cookies()
         except:
             warning("Unable to find Notification Popup, possibly already closed.")
 
     def _create_content(self) -> None:
-        self._driver.implicitly_wait(10)
-        create_content_button = self._driver.find_element(By.XPATH, "//*[contains(text(), 'Criar')]")
+        create_content_button = self._wait_element(By.XPATH, "//*[contains(text(), 'Criar')]")
         create_content_button.click()
 
     @validate_call
     def _select_files(self, file_paths: list[str]) -> None:
-        file_paths_string = "\n".join(file_paths)
+        self._driver.implicitly_wait(10)
 
-        self._driver.implicitly_wait(5)
+        file_paths_string = "\n".join(file_paths)
         file_input_element = self._driver.find_element(By.CSS_SELECTOR, "input[type='file'][multiple]")
 
         self._driver.execute_script("arguments[0].style.display = 'block';", file_input_element)
@@ -74,8 +82,7 @@ class Instagram:
 
     def _close_reel_notice(self) -> None:
         try:
-            self._driver.implicitly_wait(10)
-            reel_element = self._driver.find_element(By.XPATH, "//*[text()='OK']")
+            reel_element = self._wait_element(By.XPATH, "//*[text()='OK']")
             reel_element.click()
             self._save_cookies()
         
@@ -84,9 +91,7 @@ class Instagram:
 
     @validate_call
     def _put_caption(self, caption: str) -> None:
-        self._driver.implicitly_wait(5)
-
-        caption_element = self._driver.find_element(By.CSS_SELECTOR, "div[role='textbox']")
+        caption_element = self._wait_element(By.CSS_SELECTOR, "div[role='textbox']")
         caption_element.click()
 
         pyperclip.copy(caption)
@@ -99,13 +104,11 @@ class Instagram:
             .perform())
 
     def _next(self) -> None:
-        self._driver.implicitly_wait(5)
-        next_element = self._driver.find_element(By.XPATH, "//*[contains(text(), 'Avançar')]")
+        next_element = self._wait_element(By.XPATH, "//*[contains(text(), 'Avançar')]")
         next_element.click()
 
     def _share(self) -> None:
-        self._driver.implicitly_wait(15)
-        next_element = self._driver.find_element(By.XPATH, "//*[contains(text(), 'Compartilhar')]")
+        next_element = self._wait_element(By.XPATH, "//div[@role='button' and text()='Compartilhar']")
         next_element.click()
 
     @validate_call
@@ -123,7 +126,7 @@ class Instagram:
         self._put_caption(caption)
         self._share()
         self._save_cookies()
-
+        time.sleep(15)
 
     @validate_call
     def login(
@@ -136,12 +139,9 @@ class Instagram:
         time.sleep(3)
 
         try:
-            username_input = WebDriverWait(self._driver, 10).until(
-                EC.element_to_be_selected((By.CSS_SELECTOR, "input[name=\"username\"]"))
-            )
-             
-            password_input = self._driver.find_element(By.CSS_SELECTOR, "input[name=\"password\"]")
-            enter_button = self._driver.find_element(By.CSS_SELECTOR, "button[type=\"submit\"]")
+            username_input = self._wait_element(By.CSS_SELECTOR, "input[name=\"username\"]")
+            password_input = self._wait_element(By.CSS_SELECTOR, "input[name=\"password\"]")
+            enter_button = self._wait_element(By.CSS_SELECTOR, "button[type=\"submit\"]")
 
             actions = [ lambda: username_input.send_keys(username), lambda: password_input.send_keys(password), lambda: enter_button.click() ]
 
