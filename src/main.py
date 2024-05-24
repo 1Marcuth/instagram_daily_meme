@@ -1,15 +1,15 @@
 from configparser import ConfigParser
 from pydantic import validate_call
-from datetime import datetime
+from datetime import datetime, timedelta
 import decouple
+import time
 import os
 
 from utils.file import read_json_file, write_json_file
 from models.context import ContextModel
 from post_details import create_caption
+from settings import VALIDATE_CONFIG
 from instagram import Instagram
-
-VALIDATE_CONFIG = dict(arbitrary_types_allowed = True)
 
 def check_user_data_dir() -> None:
     if not os.path.exists(".user_data"):
@@ -22,7 +22,7 @@ def get_context() -> ContextModel:
 
 @validate_call(config = VALIDATE_CONFIG)
 def save_context(context: ContextModel) -> None:
-    context_dict = context.dict()
+    context_dict = context.model_dump()
     write_json_file("context.json", context_dict)
 
 def get_config() -> dict:
@@ -52,12 +52,15 @@ def should_post_check(context: ContextModel) -> bool:
         context.days_posted = [current_time]
         return True
     
+    interval_between_posts = timedelta(days = 1).total_seconds()
     latest_post_time = max(context.days_posted)
-    latest_post_date = datetime.fromtimestamp(latest_post_time)
+    is_to_post = current_date > datetime.fromtimestamp(latest_post_time + interval_between_posts)
 
-    if current_date > latest_post_date:
+    if is_to_post:
         context.days_posted.append(current_time)
         return True
+    
+    return False
 
 @validate_call(config = VALIDATE_CONFIG)
 def create_daily_post(context: ContextModel, config: dict) -> None:
@@ -68,9 +71,6 @@ def create_daily_post(context: ContextModel, config: dict) -> None:
     video_file_path = os.path.normpath(os.path.join(current_dir, config["main"]["video_file_path"]))
     post_location = config["post"]["location"]
     media_file_paths = [ video_file_path ]
-
-    post_location
-    media_file_paths
 
     instagram.create_post(media_file_paths, caption, post_location)
 
